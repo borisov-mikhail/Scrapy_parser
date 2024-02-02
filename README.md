@@ -1,6 +1,11 @@
 # How to Start
 ```
 git clone git@github.com:borisov-mikhail/Scrapy_parser.git
+```
+```
+cd Scrapy_parser
+```
+```
 scrapy crawl film_spider -o out.csv
 ```
 
