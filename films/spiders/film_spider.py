@@ -1,10 +1,13 @@
 import scrapy
+from fake_useragent import UserAgent
 
+ua = UserAgent()
 
 class FilmSpiderSpider(scrapy.Spider):
     name = "film_spider"
     allowed_domains = ["ru.wikipedia.org",
-                       "ru.m.wikipedia.org", 'www.imdb.com']
+                       "ru.m.wikipedia.org", 
+                       'www.imdb.com']
 
     def start_requests(self):
         URL = "https://ru.wikipedia.org/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A4%D0%B8%D0%BB%D1%8C%D0%BC%D1%8B_%D0%BF%D0%BE_%D0%B3%D0%BE%D0%B4%D0%B0%D0%BC"
@@ -62,10 +65,29 @@ class FilmSpiderSpider(scrapy.Spider):
             year = response.css('span.dtstart::text').get()
 
         # Combine data
-        yield {
+        film_data = {
             'Название': name,
             'Жанр': genre,
             'Режиссер': director,
             'Страна': country,
             'Год': year
         }
+        
+        if response.css('span[data-wikidata-property-id="P345"]').css('a::attr(href)').get():
+            imdb_url = response.css('span[data-wikidata-property-id="P345"]').css('a::attr(href)').get()
+        
+            yield response.follow(imdb_url, 
+                                headers={"User-Agent": ua.random}, 
+                                callback=self.parse_imdb_rating, 
+                                cb_kwargs=dict(film_data=film_data))
+        else:
+            film_data['IMDB'] = ' '
+            yield film_data
+        
+    def parse_imdb_rating(self, response, film_data):
+        if response.css('span.sc-bde20123-1.cMEQkK::text').get():
+            imdb_rating = response.css('span.sc-bde20123-1.cMEQkK::text').get()
+            film_data['IMDB'] = imdb_rating
+        else:
+            film_data['IMDB'] = ' '
+        yield film_data
